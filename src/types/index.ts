@@ -11,21 +11,21 @@ export interface Project {
   language: string;
   code: string[];
   comments: string[];
-  createdAt: number;
-  parentId: string | null;
+  createdAt: string;
+  folderId: string | null;
   wpm?: number;
   accuracy?: number;
-  lastPracticed?: number;
+  lastPracticed?: string;
 }
 
 export interface Course {
   id: string;
   name: string;
-  language: string;
+  language?: string;
   description: string;
-  lessons: Project[];
-  createdAt: number;
-  parentId: string | null;
+  lessons: string[];
+  createdAt: string;
+  folderId: string | null;
   searchContext?: string;
 }
 
@@ -33,7 +33,7 @@ export interface Folder {
   id: string;
   name: string;
   parentId: string | null;
-  createdAt: number;
+  createdAt: string;
 }
 
 export interface AppConfig {

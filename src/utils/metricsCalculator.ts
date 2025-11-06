@@ -71,3 +71,16 @@ export function pauseTimer(metrics: TypingMetrics): TypingMetrics {
 export function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
+
+export function calculateMetrics(totalChars: number, errorCount: number, activeTimeMs: number) {
+  if (activeTimeMs === 0) return { wpm: 0, accuracy: 100 };
+  
+  const minutes = activeTimeMs / 60000;
+  const words = totalChars / 5;
+  const wpm = Math.round(words / minutes);
+  
+  const correctChars = totalChars - errorCount;
+  const accuracy = totalChars === 0 ? 100 : Math.round((correctChars / totalChars) * 100);
+  
+  return { wpm, accuracy };
+}

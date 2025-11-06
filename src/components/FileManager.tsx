@@ -15,6 +15,7 @@ interface FileManagerProps {
   onCreateProject: () => void;
   onCreateCourse: () => void;
   onCreateFolder: () => void;
+  onOpenSettings: () => void;
 }
 
 export function FileManager({
@@ -28,11 +29,12 @@ export function FileManager({
   onCreateProject,
   onCreateCourse,
   onCreateFolder,
+  onOpenSettings,
 }: FileManagerProps) {
   const currentItems = {
     folders: folders.filter(f => f.parentId === currentFolderId),
-    projects: projects.filter(p => p.parentId === currentFolderId),
-    courses: courses.filter(c => c.parentId === currentFolderId),
+    projects: projects.filter(p => p.folderId === currentFolderId),
+    courses: courses.filter(c => c.folderId === currentFolderId),
   };
 
   return (
@@ -58,17 +60,20 @@ export function FileManager({
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={onCreateFolder} variant="outline">
+            <Button onClick={onCreateFolder} variant="outline" size="sm">
               <PlusIcon className="h-4 w-4 mr-2" />
               Nueva Carpeta
             </Button>
-            <Button onClick={onCreateProject} variant="outline">
+            <Button onClick={onCreateProject} variant="outline" size="sm">
               <PlusIcon className="h-4 w-4 mr-2" />
               Nuevo Proyecto
             </Button>
-            <Button onClick={onCreateCourse}>
+            <Button onClick={onCreateCourse} size="sm">
               <GraduationCapIcon className="h-4 w-4 mr-2" />
               Nuevo Curso
+            </Button>
+            <Button onClick={onOpenSettings} variant="ghost" size="sm">
+              ⚙️
             </Button>
           </div>
         </div>
