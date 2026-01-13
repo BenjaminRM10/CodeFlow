@@ -84,6 +84,8 @@ const Index = () => {
         language: result.language,
         code: result.code,
         comments: result.comments,
+        notes: result.notes,
+        description: result.description,
         createdAt: new Date().toISOString(),
         folderId: currentFolderId,
       };
@@ -160,6 +162,8 @@ const Index = () => {
           language: result.language,
           code: result.code,
           comments: result.comments,
+          notes: result.notes,
+          description: result.description,
           createdAt: new Date().toISOString(),
           folderId: courseId,
         };

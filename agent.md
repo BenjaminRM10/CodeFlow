@@ -714,9 +714,13 @@ Checkpoints de Validación
  El layout es responsive
 
 Cambios Implementados
-<!-- El agente documentará aquí -->
+Cambios Implementados
+- Updated `aiService.ts` to enforce separate JSON output for code and notes.
+- Removed inline comments from generated code to ensure clean practice text.
+- Integrated `notes` array into Project creation ensuring synchronization with `NotesPanel`.
+- Improved system prompts to guarantee valid JSON responses.
 
-FASE 4: Mejora del Generador de Código AI
+✅ FASE 4: Mejora del Generador de Código AI
 Objetivos
 
 Generar código real sin comentarios inline excesivos

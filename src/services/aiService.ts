@@ -14,7 +14,9 @@ export interface AIGenerationResponse {
   mode: ProjectType;
   language: string;
   code: string[];
-  comments: string[];
+  comments?: string[]; // Deprecated but kept for compatibility
+  notes?: Array<{ line: number; content: string }>;
+  description?: string;
 }
 
 export interface CourseOutline {
@@ -42,20 +44,26 @@ CRITICAL RULES:
 5. NO explanatory text, headers, or prose in the code array
 6. Code must follow latest syntax and best practices
 7. Each code lesson must have 30+ lines minimum
+8. DO NOT include inline comments in the "code" array. Educational content goes in "notes".
 
 Response format (JSON):
 {
   "mode": "terminal" or "editor",
   "language": "bash|python|javascript|sql|dockerfile|etc",
+  "description": "Brief one-line description of what this code does",
   "code": ["line1", "line2", ...],
-  "comments": ["comment1 (300-350 chars)", "comment2", ...]
+  "notes": [
+    { "line": 1, "content": "Explanation for line 1..." },
+    { "line": 5, "content": "Explanation for line 5..." }
+  ]
 }
 
-Comments requirements:
-- One comment per code line (1:1 mapping)
-- Each comment: 300-350 characters
-- Explain syntax, functions, purpose, and WHY
-- Educational and detailed
+Notes requirements:
+- Create separate notes for key lines of code (not necessarily every line)
+- "line" index is 1-based (lines start at 1)
+- Each note: 100-300 characters
+- Explain syntax, concepts, and why this pattern is used
+- Focus on educational value
 
 NO \\n escapes in code lines - each array element is ONE physical line.`;
 
@@ -339,7 +347,8 @@ User request: ${prompt}
 
 Generate professional, executable code following latest best practices.
 Minimum 30 lines of real, working code.
-Include detailed comments (300-350 chars each) explaining every line.`;
+Do NOT include inline comments in the code.
+Generate educational notes in the separate "notes" array.`;
 }
 
 function generateDemoContent(language: string, type: ProjectType): AIGenerationResponse {
@@ -352,19 +361,20 @@ function generateDemoContent(language: string, type: ProjectType): AIGenerationR
     'print(f"Result: {y}")',
   ];
 
-  const demoComments = [
-    'This is a demo comment explaining the first line. In a real scenario, this would be a detailed explanation of the syntax, purpose, and context of this specific line of code. Each comment should be between 300-350 characters to provide comprehensive educational value.',
-    'This is a demo comment for the second line. It would explain what this line does, why it is important, and how it fits into the larger program structure. The goal is to help learners understand not just what but why.',
-    'Demo comment for variable assignment. Would explain the syntax, data type, value, and purpose of this variable in the context of the program. Educational comments should be thorough and clear.',
-    'Demo comment explaining the calculation. Would describe the operation, the purpose of this calculation, and how the result will be used in subsequent code.',
-    'Demo comment for the output statement. Would explain the print function, string formatting syntax, and what the user will see when this code runs.',
+  const demoNotes = [
+    { line: 1, content: 'This is a demo comment explaining the first line. In a real scenario, this would be a detailed explanation of the syntax, purpose, and context of this specific line of code.' },
+    { line: 2, content: 'This is a demo comment for the second line. It would explain what this line does, why it is important, and how it fits into the larger program structure.' },
+    { line: 3, content: 'Demo comment for variable assignment. Would explain the syntax, data type, value, and purpose of this variable in the context of the program.' },
+    { line: 4, content: 'Demo comment explaining the calculation. Would describe the operation, the purpose of this calculation, and how the result will be used in subsequent code.' },
+    { line: 5, content: 'Demo comment for the output statement. Would explain the print function, string formatting syntax, and what the user will see when this code runs.' },
   ];
 
   return {
     mode: type,
     language,
     code: demoCode,
-    comments: demoComments,
+    notes: demoNotes,
+    description: "Demo project for testing functionality without API key",
   };
 }
 
