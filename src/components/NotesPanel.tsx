@@ -29,70 +29,63 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
         ? notes
         : comments.map((content, idx) => ({ line: idx + 1, content }));
 
-    // Auto-scroll to active note
-    useEffect(() => {
-        if (isVisible && activeNoteRef.current) {
-            activeNoteRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest',
-            });
-        }
-    }, [currentLine, isVisible]);
+    // Find the note relevant to the current line (most recent previous note)
+    const activeNote = displayNotes
+        .filter(n => n.line <= currentLine + 1)
+        .sort((a, b) => b.line - a.line)[0];
 
-    if (!isVisible) {
-        return null;
-    }
+    // Find next note for "Up Next" context
+    const nextNote = displayNotes
+        .filter(n => n.line > currentLine + 1)
+        .sort((a, b) => a.line - b.line)[0];
 
-    // Find the note relevant to the current line (or the closest previous one)
-    // Actually, standard behavior for "synchronized notes" is usually to highlight the note linked to the specific line or block.
-    // If we want to show ALL notes and just highlight the current one:
     return (
         <Card className="flex-1 w-80 h-full border-l border-border bg-card/50 backdrop-blur-sm flex flex-col rounded-none border-y-0 border-r-0">
             {/* Header */}
             <div className="p-4 border-b border-border flex items-center gap-2 bg-background/50">
                 <BookOpen className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold text-sm">Notas del Código</h3>
-                <span className="ml-auto text-xs text-muted-foreground font-mono">
-                    Línea {currentLine + 1}
-                </span>
+                <h3 className="font-semibold text-sm">Contexto Educativo</h3>
             </div>
 
-            {/* Scrollable notes */}
-            <ScrollArea className="flex-1 p-0">
-                <div className="flex flex-col">
-                    {displayNotes.length === 0 ? (
-                        <div className="p-8 text-center text-muted-foreground text-sm">
-                            No hay notas para este proyecto.
+            {/* Active Note Content */}
+            <div className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto">
+                {activeNote ? (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <div className="flex items-center gap-2 text-primary">
+                            <span className="text-xs font-mono bg-primary/10 px-2 py-1 rounded">
+                                L{activeNote.line}
+                            </span>
+                            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                Explicación Actual
+                            </span>
                         </div>
-                    ) : (
-                        displayNotes.map((note, index) => {
-                            const styles = note.line === currentLine + 1
-                                ? "bg-primary/10 border-l-4 border-primary"
-                                : "border-l-4 border-transparent hover:bg-muted/50";
+                        <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                            {activeNote.content}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="text-center text-muted-foreground text-sm py-10">
+                        Comienza a escribir para ver las notas educativas...
+                    </div>
+                )}
 
-                            return (
-                                <div
-                                    key={index}
-                                    ref={note.line === currentLine + 1 ? activeNoteRef : null}
-                                    className={cn(
-                                        "p-4 text-sm transition-colors duration-200 border-b border-border/50",
-                                        styles
-                                    )}
-                                >
-                                    <div className="flex items-baseline gap-2 mb-1">
-                                        <span className="text-xs font-mono text-muted-foreground shrink-0">
-                                            L{note.line}
-                                        </span>
-                                    </div>
-                                    <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                                        {note.content}
-                                    </p>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-            </ScrollArea>
+                {/* Next Note Teaser */}
+                {nextNote && (
+                    <div className="mt-auto pt-6 border-t border-border/50 opacity-60 hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-2 mb-2 text-muted-foreground">
+                            <span className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                                L{nextNote.line}
+                            </span>
+                            <span className="text-xs font-medium uppercase tracking-wider">
+                                Siguiente
+                            </span>
+                        </div>
+                        <p className="text-xs line-clamp-2 text-muted-foreground">
+                            {nextNote.content}
+                        </p>
+                    </div>
+                )}
+            </div>
         </Card>
     );
 };

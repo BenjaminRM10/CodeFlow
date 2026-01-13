@@ -719,6 +719,8 @@ Cambios Implementados
 - Removed inline comments from generated code to ensure clean practice text.
 - Integrated `notes` array into Project creation ensuring synchronization with `NotesPanel`.
 - Improved system prompts to guarantee valid JSON responses.
+- Refined `NotesPanel` to display only the single most relevant note to avoid scroll sync issues.
+- Added "Up Next" preview for upcoming notes.
 
 ✅ FASE 4: Mejora del Generador de Código AI
 Objetivos
