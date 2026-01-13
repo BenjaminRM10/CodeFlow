@@ -70,6 +70,23 @@ export const storage = {
     localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
   },
 
+  updateProjectMetrics(id: string, metrics: { wpm: number; accuracy: number; progress: number; completed: boolean }): void {
+    const projects = this.getProjects();
+    const index = projects.findIndex(p => p.id === id);
+
+    if (index >= 0) {
+      projects[index] = {
+        ...projects[index],
+        wpm: metrics.wpm,
+        accuracy: metrics.accuracy,
+        progress: metrics.progress,
+        completed: metrics.completed,
+        lastPracticed: new Date().toISOString()
+      };
+      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+    }
+  },
+
   // Courses
   getCourses(): Course[] {
     const stored = localStorage.getItem(STORAGE_KEYS.COURSES);

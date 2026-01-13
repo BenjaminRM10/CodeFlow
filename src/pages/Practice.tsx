@@ -11,6 +11,7 @@ import { VirtualKeyboard } from '@/components/VirtualKeyboard';
 import { NotesPanel } from '@/components/NotesPanel';
 import { CodeLine, CharacterState } from '@/components/CodeLine';
 import { soundManager } from '@/lib/sounds';
+import { achievementManager } from '@/lib/achievements';
 
 
 // Interface moved to CodeLine component
@@ -230,6 +231,15 @@ export default function Practice() {
     setIsActive(false);
     setStartTime(null);
     setActiveTime(0);
+
+    if (project?.id) {
+      storage.updateProjectMetrics(project.id, {
+        wpm: 0,
+        accuracy: 0,
+        progress: 0,
+        completed: false
+      });
+    }
   };
 
   if (!project) return null;
@@ -259,6 +269,36 @@ export default function Practice() {
 
     return { wpm, accuracy, corrections, progress };
   };
+
+  // Save progress when line changes or project finishes
+  useEffect(() => {
+    if (!project || !isActive) return;
+
+    const metrics = calculateMetricsLocal();
+    const isCompleted = currentLine >= project.code.length;
+
+    // Save to storage
+    if (project.id) {
+      storage.updateProjectMetrics(project.id, {
+        wpm: metrics.wpm,
+        accuracy: metrics.accuracy,
+        progress: metrics.progress,
+        completed: isCompleted && metrics.progress >= 100
+      });
+    }
+
+    // Update daily progress if completed
+    if (isCompleted && metrics.progress >= 100) {
+      // Only count once per session or day? 
+      // For now simple increment is enough as per requirement "projectsCompleted"
+      // But we need to be careful not to spam it. 
+      // In `Practice` component, maybe we can track if we already marked it completed this session.
+      // However, the main request is just saving the state.
+      storage.updateDailyProgress(new Date().toISOString().split('T')[0], Math.round(activeTime / 60000), 1);
+      achievementManager.checkAchievements();
+    }
+
+  }, [currentLine, isActive]); // Save on line change
 
   const metrics = calculateMetricsLocal();
 

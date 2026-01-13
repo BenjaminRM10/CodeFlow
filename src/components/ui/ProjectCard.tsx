@@ -40,6 +40,26 @@ export const ProjectCard = React.memo(({ project }: ProjectCardProps) => {
                         <Code className="w-4 h-4 text-gray-500" />
                         <span>{Array.isArray(project.code) ? project.code.length : project.code.split('\n').length} lines</span>
                     </div>
+                    {project.completed ? (
+                        <div className="flex items-center gap-2 text-green-400">
+                            <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20 px-2 py-0 h-5 text-[10px]">COMPLETED</Badge>
+                        </div>
+                    ) : (project.progress && project.progress > 0) ? (
+                        <div className="flex items-center gap-2 w-full">
+                            <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-purple-500 rounded-full"
+                                    style={{ width: `${Math.min(project.progress, 100)}%` }}
+                                />
+                            </div>
+                            <span className="text-xs text-purple-400">{Math.round(project.progress)}%</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            <span>Not started</span>
+                        </div>
+                    )}
                     <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-gray-500" />
                         <span>{new Date(project.createdAt).toLocaleDateString()}</span>

@@ -18,6 +18,8 @@ export interface Project {
   wpm?: number;
   accuracy?: number;
   lastPracticed?: string;
+  completed?: boolean;
+  progress?: number;
 }
 
 export interface Course {
