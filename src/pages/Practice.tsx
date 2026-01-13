@@ -190,8 +190,9 @@ export default function Practice() {
   const scrollToLine = (lineIndex: number) => {
     if (codeAreaRef.current) {
       const lineHeight = 24;
-      const containerHeight = codeAreaRef.current.offsetHeight;
-      const targetScroll = lineIndex * lineHeight - containerHeight / 2;
+      // Keep ~3 lines of context above
+      const contextOffset = lineHeight * 3;
+      const targetScroll = lineIndex * lineHeight - contextOffset;
       codeAreaRef.current.scrollTop = Math.max(0, targetScroll);
     }
   };

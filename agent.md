@@ -721,6 +721,7 @@ Cambios Implementados
 - Improved system prompts to guarantee valid JSON responses.
 - Refined `NotesPanel` to display only the single most relevant note to avoid scroll sync issues.
 - Added "Up Next" preview for upcoming notes.
+- Updated auto-scroll to keep the current line near the top of the viewport for better visibility of upcoming code.
 
 ✅ FASE 4: Mejora del Generador de Código AI
 Objetivos
