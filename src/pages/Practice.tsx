@@ -6,6 +6,7 @@ import { ArrowLeft, Play, Pause } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import { Project } from '@/types';
 import { ThemeBackground } from '@/components/ThemeBackground';
+import { VirtualKeyboard } from '@/components/VirtualKeyboard';
 
 
 
@@ -36,15 +37,19 @@ export default function Practice() {
   // New state for detailed character tracking
   const [charStates, setCharStates] = useState<Record<string, CharacterState>>({});
 
+  // Keyboard tracking
+  const [pressedKey, setPressedKey] = useState<string | null>(null);
+
   const [isActive, setIsActive] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [activeTime, setActiveTime] = useState(0);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const codeAreaRef = useRef<HTMLDivElement>(null);
-  const config = storage.getConfig();
+  const [config, setConfig] = useState(storage.getConfig());
 
   useEffect(() => {
     const cfg = storage.getConfig();
+    setConfig(cfg);
     setTheme(cfg.theme);
 
     if (!projectId) {
@@ -77,6 +82,9 @@ export default function Practice() {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!isActive || !project) return;
 
+    setPressedKey(e.key);
+    setTimeout(() => setPressedKey(null), 150);
+
     const key = `${currentLine}-${currentCol}`;
 
     if (e.key === 'Enter') {
@@ -100,9 +108,9 @@ export default function Practice() {
           const next = { ...prev };
           // Don't delete, just set to pending so we keep attempts history?
           // Actually requirements say "NO penalizar precisión", implies we keep attempts history?
-          // But if we delete, we are "un-typing". 
+          // But if we delete, we are "un-typing".
           // Let's keep the record but mark as pending or remove status.
-          // If we remove from map, we lose attempt count. 
+          // If we remove from map, we lose attempt count.
           // Let's update it to pending.
           if (next[charKey]) {
             next[charKey] = { ...next[charKey], status: 'pending' };
@@ -138,12 +146,12 @@ export default function Practice() {
         const newAttempts = currentState.attempts + 1;
 
         // corrected = true if it was corrected (meaning attempts > 0 and now it is correct)
-        // Actually attempts counts EVERY try. 
-        // If it was previously incorrect (implied by attempts > 0 before this success?), 
+        // Actually attempts counts EVERY try.
+        // If it was previously incorrect (implied by attempts > 0 before this success?),
         // Or simply if this is a success and attempts > 1?
         // Let's follow: "corrected: currentState.attempts > 0 && isCorrect" (from agent.md example)
         // Wait, currentState.attempts is previous attempts.
-        // If previous attempts > 0, it means we tried before. 
+        // If previous attempts > 0, it means we tried before.
         // If we tried before, we presumably failed or backspaced.
 
         return {
@@ -197,7 +205,7 @@ export default function Practice() {
     }
   };
 
-  // Fix pause logic: When pausing, we stop updating activeTime. 
+  // Fix pause logic: When pausing, we stop updating activeTime.
   // When resuming, we need a new startTime that accounts for already elapsed activeTime.
   // togglePractice above does: setStartTime(Date.now() - activeTime) which is correct for resume.
 
@@ -241,6 +249,8 @@ export default function Practice() {
 
   const metrics = calculateMetricsLocal();
 
+  const nextChar = project.code[currentLine]?.[currentCol] || '';
+
   return (
     <>
       <ThemeBackground theme={theme} />
@@ -282,86 +292,99 @@ export default function Practice() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex">
-          {/* Code Area */}
-          <div
-            ref={codeAreaRef}
-            className="flex-[3] overflow-auto bg-card/50 backdrop-blur-sm p-8 font-mono text-sm"
-            style={{ scrollBehavior: 'smooth' }}
-          >
-            {project.code.map((line, lineIdx) => (
-              <div key={lineIdx} className="flex items-center min-h-[24px]" style={{ lineHeight: '24px' }}>
-                <span className="text-muted-foreground mr-4 select-none w-8 text-right">
-                  {lineIdx + 1}
-                </span>
-                <div className="flex-1 relative whitespace-pre">
-                  {line.split('').map((char, charIdx) => {
-                    const key = `${lineIdx}-${charIdx}`;
-                    const state = charStates[key];
-                    const isCurrent = lineIdx === currentLine && charIdx === currentCol;
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex overflow-hidden">
+            {/* Code Area */}
+            <div
+              ref={codeAreaRef}
+              className="flex-[3] overflow-auto bg-card/50 backdrop-blur-sm p-8 font-mono text-sm"
+              style={{ scrollBehavior: 'smooth' }}
+            >
+              {project.code.map((line, lineIdx) => (
+                <div key={lineIdx} className="flex items-center min-h-[24px]" style={{ lineHeight: '24px' }}>
+                  <span className="text-muted-foreground mr-4 select-none w-8 text-right">
+                    {lineIdx + 1}
+                  </span>
+                  <div className="flex-1 relative whitespace-pre">
+                    {line.split('').map((char, charIdx) => {
+                      const key = `${lineIdx}-${charIdx}`;
+                      const state = charStates[key];
+                      const isCurrent = lineIdx === currentLine && charIdx === currentCol;
 
-                    let charClass = 'text-muted-foreground'; // Default (pending/not reached)
+                      let charClass = 'text-muted-foreground'; // Default (pending/not reached)
 
-                    if (state && state.status !== 'pending') {
-                      if (state.status === 'correct') {
-                        charClass = state.corrected
-                          ? 'text-green-500' // Corrected
-                          : 'text-foreground'; // Correct on first try (White/Foreground)
-                      } else if (state.status === 'incorrect') {
-                        charClass = 'text-destructive bg-destructive/20';
+                      if (state && state.status !== 'pending') {
+                        if (state.status === 'correct') {
+                          charClass = state.corrected
+                            ? 'text-green-500' // Corrected
+                            : 'text-foreground'; // Correct on first try (White/Foreground)
+                        } else if (state.status === 'incorrect') {
+                          charClass = 'text-destructive bg-destructive/20';
+                        }
                       }
-                    }
 
-                    return (
-                      <span key={charIdx} className="relative">
-                        {isCurrent && isActive && (
-                          <span className="absolute inset-0 border-l-2 border-primary animate-pulse" />
-                        )}
-                        <span className={charClass}>
-                          {char}
+                      return (
+                        <span key={charIdx} className="relative">
+                          {isCurrent && isActive && (
+                            <span className="absolute inset-0 border-l-2 border-primary animate-pulse" />
+                          )}
+                          <span className={charClass}>
+                            {char}
+                          </span>
                         </span>
-                      </span>
-                    );
-                  })}
-                  {/* Cursor at end of line */}
-                  {lineIdx === currentLine && currentCol === line.length && isActive && (
-                    <span className="inline-block w-0 border-l-2 border-primary animate-pulse" />
+                      );
+                    })}
+                    {/* Cursor at end of line */}
+                    {lineIdx === currentLine && currentCol === line.length && isActive && (
+                      <span className="inline-block w-0 border-l-2 border-primary animate-pulse" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Comments Panel */}
+            {config.showComments && (
+              <div className="flex-1 border-l overflow-auto bg-card/50 backdrop-blur-sm p-6 min-w-[300px]">
+                <h3 className="font-semibold mb-4 text-sm uppercase text-muted-foreground">Comentarios</h3>
+                <div className="space-y-4">
+                  {isActive ? (
+                    // Show only current line comment when active
+                    <div className="text-sm text-foreground">
+                      <span className="text-muted-foreground font-mono">Línea {currentLine + 1}:</span>
+                      <p className="mt-2">{project.comments?.[currentLine] || project.notes?.find(n => n.line === currentLine + 1)?.content || "Sin comentario"}</p>
+                    </div>
+                  ) : (
+                    // Show all comments when paused
+                    project.comments ? (
+                      project.comments.map((comment, idx) => (
+                        <div key={idx} className="text-sm">
+                          <span className="text-muted-foreground font-mono">Línea {idx + 1}:</span>
+                          <p className="mt-1 text-foreground">{comment}</p>
+                        </div>
+                      ))
+                    ) : (
+                      project.notes?.map((note, idx) => (
+                        <div key={idx} className="text-sm">
+                          <span className="text-muted-foreground font-mono">Línea {note.line}:</span>
+                          <p className="mt-1 text-foreground">{note.content}</p>
+                        </div>
+                      ))
+                    )
                   )}
                 </div>
               </div>
-            ))}
+            )}
           </div>
 
-          {/* Comments Panel */}
-          {config.showComments && (
-            <div className="flex-1 border-l overflow-auto bg-card/50 backdrop-blur-sm p-6">
-              <h3 className="font-semibold mb-4 text-sm uppercase text-muted-foreground">Comentarios</h3>
-              <div className="space-y-4">
-                {isActive ? (
-                  // Show only current line comment when active
-                  <div className="text-sm text-foreground">
-                    <span className="text-muted-foreground font-mono">Línea {currentLine + 1}:</span>
-                    <p className="mt-2">{project.comments?.[currentLine] || project.notes?.find(n => n.line === currentLine + 1)?.content || "Sin comentario"}</p>
-                  </div>
-                ) : (
-                  // Show all comments when paused
-                  project.comments ? (
-                    project.comments.map((comment, idx) => (
-                      <div key={idx} className="text-sm">
-                        <span className="text-muted-foreground font-mono">Línea {idx + 1}:</span>
-                        <p className="mt-1 text-foreground">{comment}</p>
-                      </div>
-                    ))
-                  ) : (
-                    project.notes?.map((note, idx) => (
-                      <div key={idx} className="text-sm">
-                        <span className="text-muted-foreground font-mono">Línea {note.line}:</span>
-                        <p className="mt-1 text-foreground">{note.content}</p>
-                      </div>
-                    ))
-                  )
-                )}
-              </div>
+          {/* Virtual Keyboard */}
+          {config.showKeyboard && (
+            <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <VirtualKeyboard
+                nextKey={nextChar}
+                pressedKey={pressedKey}
+                showFingerGuide={true}
+              />
             </div>
           )}
         </div>

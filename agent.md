@@ -279,7 +279,7 @@ Cambios Implementados
 - Refactored `Practice.tsx` to normalize `project.code` array handling.
 - Removed unused imports and fixed type errors.
 
-FASE 2: Teclado Virtual con Guía de Dedos
+✅ FASE 2: Teclado Virtual con Guía de Dedos
 Objetivos
 
 Implementar teclado visual que muestre qué dedos usar
@@ -498,6 +498,10 @@ Checkpoints de Validación
  El teclado es responsive
 
 Cambios Implementados
+- Created `VirtualKeyboard` component with `KEYBOARD_LAYOUT` and finger mapping.
+- Integrated `VirtualKeyboard` into `Practice.tsx`.
+- Added visual feedback for key presses and next key guidance.
+- Controlled visibility via `SettingsModal` (using existing toggle).
 <!-- El agente documentará aquí -->
 
 FASE 3: Sistema de Notas Sincronizadas
