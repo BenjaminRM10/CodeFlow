@@ -242,10 +242,10 @@ export default function Practice() {
     }
   };
 
-  if (!project) return null;
-
-  // Metrics Calculation
+  // Metrics Calculation - Safe if project is null
   const calculateMetricsLocal = () => {
+    if (!project) return { wpm: 0, accuracy: 0, corrections: 0, progress: 0 };
+
     const totalChars = project.code.join('').length;
     const typedCount = Object.values(charStates).filter(s => s.status !== 'pending').length;
 
@@ -298,17 +298,19 @@ export default function Practice() {
       achievementManager.checkAchievements();
     }
 
-  }, [currentLine, isActive]); // Save on line change
+  }, [currentLine, isActive, project]); // Added project dependency for safety
 
   const metrics = calculateMetricsLocal();
 
-  const nextChar = project.code[currentLine]?.[currentCol] || '';
+  const nextChar = project?.code[currentLine]?.[currentCol] || '';
 
   // Font Size Class
   const fontSizeClass =
     config.fontSize === 'small' ? 'text-sm' :
       config.fontSize === 'large' ? 'text-lg' :
         'text-base'; // medium default
+
+  if (!project) return null;
 
   return (
     <>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeBackground } from '@/components/ThemeBackground';
 import { CreateProjectModal } from '@/components/CreateProjectModal';
@@ -141,7 +141,7 @@ const Index = () => {
     ? Math.round(projects.reduce((acc, p) => acc + (p.accuracy || 0), 0) / totalProjects)
     : 0;
 
-  const handleCreateProject = async (data: { type: any; language: string; prompt: string }) => {
+  const handleCreateProject = useCallback(async (data: { type: any; language: string; prompt: string }) => {
     setIsGenerating(true);
     try {
       const config = storage.getConfig();
@@ -188,9 +188,9 @@ const Index = () => {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [currentFolderId]);
 
-  const handleCreateCourse = async (data: { language: string; prompt: string }) => {
+  const handleCreateCourse = useCallback(async (data: { language: string; prompt: string }) => {
     setIsGenerating(true);
     try {
       const config = storage.getConfig();
@@ -256,7 +256,7 @@ const Index = () => {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [currentFolderId]);
 
   return (
     <>
@@ -379,16 +379,6 @@ const Index = () => {
         </div>
 
         {/* Modals & Overlays */}
-        {isGenerating && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center">
-            <div className="text-center space-y-4 p-8 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto text-purple-500" />
-              <p className="text-lg font-semibold text-white">Creando tu contenido...</p>
-              <p className="text-sm text-gray-400">Usando inteligencia artificial</p>
-            </div>
-          </div>
-        )}
-
         <CreateProjectModal
           open={createProjectOpen}
           onOpenChange={setCreateProjectOpen}
@@ -417,6 +407,27 @@ const Index = () => {
           achievement={newlyUnlockedAchievement}
           onClose={() => setNewlyUnlockedAchievement(null)}
         />
+
+        {/* Loading Overlay - Moved to end to prevent structural shifts */}
+        {isGenerating && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[100] flex items-center justify-center">
+            <div className="text-center space-y-6 p-12 bg-gray-900/90 border border-purple-500/30 rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-300">
+              <div className="relative w-20 h-20 mx-auto">
+                <div className="absolute inset-0 border-4 border-purple-500/30 rounded-full" />
+                <div className="absolute inset-0 border-4 border-transparent border-t-purple-500 rounded-full animate-spin" />
+                <Loader2 className="absolute inset-0 m-auto h-8 w-8 text-purple-400 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-200 animate-pulse">
+                  Creando tu contenido...
+                </p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Nuestra IA está escribiendo el código para ti
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
