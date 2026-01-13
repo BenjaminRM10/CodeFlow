@@ -40,7 +40,7 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
         .sort((a, b) => a.line - b.line)[0];
 
     return (
-        <Card className="flex-1 w-80 h-full border-l border-border bg-card/50 backdrop-blur-sm flex flex-col rounded-none border-y-0 border-r-0">
+        <Card className="flex-1 h-full border-l border-border bg-card/50 backdrop-blur-sm flex flex-col rounded-none border-y-0 border-r-0">
             {/* Header */}
             <div className="p-4 border-b border-border flex items-center gap-2 bg-background/50">
                 <BookOpen className="w-5 h-5 text-primary" />

@@ -188,12 +188,13 @@ export default function Practice() {
   }, [isActive, currentLine, currentCol, typedLines, charStates, project]); // Added charStates dependency
 
   const scrollToLine = (lineIndex: number) => {
-    if (codeAreaRef.current) {
-      const lineHeight = 24;
-      // Keep ~3 lines of context above
-      const contextOffset = lineHeight * 3;
-      const targetScroll = lineIndex * lineHeight - contextOffset;
-      codeAreaRef.current.scrollTop = Math.max(0, targetScroll);
+    // Strict scrolling: Ensure the defined line is at the top (or very close)
+    const lineElement = document.getElementById(`line-${lineIndex}`);
+    if (lineElement && codeAreaRef.current) {
+      // We use 'start' to snap it to the top.
+      // Adding scrollMarginTop via class or style could help with offset, 
+      // but let's try strict start first as requested.
+      lineElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -294,69 +295,79 @@ export default function Practice() {
         </div>
 
         {/* Main Content */}
+        {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 flex overflow-hidden">
-            {/* Code Area */}
+          {/* Top Section: Code & Notes (50% Height) */}
+          <div className="flex-1 flex overflow-hidden min-h-0">
+            {/* Code Area (75% Width) */}
             <div
               ref={codeAreaRef}
-              className="flex-[3] overflow-auto bg-card/50 backdrop-blur-sm p-8 font-mono text-sm"
-              style={{ scrollBehavior: 'smooth' }}
+              className="w-3/4 overflow-auto bg-card/50 backdrop-blur-sm p-8 font-mono text-sm scroll-smooth"
             >
-              {project.code.map((line, lineIdx) => (
-                <div key={lineIdx} className="flex items-center min-h-[24px]" style={{ lineHeight: '24px' }}>
-                  <span className="text-muted-foreground mr-4 select-none w-8 text-right">
-                    {lineIdx + 1}
-                  </span>
-                  <div className="flex-1 relative whitespace-pre">
-                    {line.split('').map((char, charIdx) => {
-                      const key = `${lineIdx}-${charIdx}`;
-                      const state = charStates[key];
-                      const isCurrent = lineIdx === currentLine && charIdx === currentCol;
+              <div className="min-h-full pb-[40vh]"> {/* Padding bottom to allow scrolling last lines to top */}
+                {project.code.map((line, lineIdx) => (
+                  <div
+                    key={lineIdx}
+                    id={`line-${lineIdx}`}
+                    className="flex items-center min-h-[32px]"
+                    style={{ lineHeight: '32px' }}
+                  >
+                    <span className="text-muted-foreground mr-4 select-none w-8 text-right opacity-50">
+                      {lineIdx + 1}
+                    </span>
+                    <div className="flex-1 relative whitespace-pre">
+                      {line.split('').map((char, charIdx) => {
+                        const key = `${lineIdx}-${charIdx}`;
+                        const state = charStates[key];
+                        const isCurrent = lineIdx === currentLine && charIdx === currentCol;
 
-                      let charClass = 'text-muted-foreground'; // Default (pending/not reached)
+                        let charClass = 'text-muted-foreground/60';
 
-                      if (state && state.status !== 'pending') {
-                        if (state.status === 'correct') {
-                          charClass = state.corrected
-                            ? 'text-green-500' // Corrected
-                            : 'text-foreground'; // Correct on first try (White/Foreground)
-                        } else if (state.status === 'incorrect') {
-                          charClass = 'text-destructive bg-destructive/20';
+                        if (state && state.status !== 'pending') {
+                          if (state.status === 'correct') {
+                            charClass = state.corrected
+                              ? 'text-green-500'
+                              : 'text-foreground font-medium';
+                          } else if (state.status === 'incorrect') {
+                            charClass = 'text-destructive bg-destructive/20 rounded-sm';
+                          }
                         }
-                      }
 
-                      return (
-                        <span key={charIdx} className="relative">
-                          {isCurrent && isActive && (
-                            <span className="absolute inset-0 border-l-2 border-primary animate-pulse" />
-                          )}
-                          <span className={charClass}>
-                            {char}
+                        return (
+                          <span key={charIdx} className="relative">
+                            {isCurrent && isActive && (
+                              <span className="absolute inset-0 border-l-2 border-primary animate-pulse shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
+                            )}
+                            <span className={charClass}>
+                              {char}
+                            </span>
                           </span>
-                        </span>
-                      );
-                    })}
-                    {/* Cursor at end of line */}
-                    {lineIdx === currentLine && currentCol === line.length && isActive && (
-                      <span className="inline-block w-0 border-l-2 border-primary animate-pulse" />
-                    )}
+                        );
+                      })}
+                      {/* Cursor at end of line */}
+                      {lineIdx === currentLine && currentCol === line.length && isActive && (
+                        <span className="inline-block w-0 border-l-2 border-primary animate-pulse shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
-            {/* Notes Panel */}
-            <NotesPanel
-              notes={project.notes}
-              comments={project.comments}
-              currentLine={currentLine}
-              isVisible={config.showComments}
-            />
+            {/* Notes Panel (25% Width) */}
+            <div className="w-1/4 border-l border-border/50">
+              <NotesPanel
+                notes={project.notes}
+                comments={project.comments}
+                currentLine={currentLine}
+                isVisible={config.showComments}
+              />
+            </div>
           </div>
 
-          {/* Virtual Keyboard */}
+          {/* Bottom Section: Virtual Keyboard (50% Height) */}
           {config.showKeyboard && (
-            <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="h-[50vh] border-t border-border/50 bg-background/95 backdrop-blur shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-20">
               <VirtualKeyboard
                 nextKey={nextChar}
                 pressedKey={pressedKey}
