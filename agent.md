@@ -723,6 +723,7 @@ Cambios Implementados
 - Added "Up Next" preview for upcoming notes.
 - **Layout Overhaul**: Implemented "HUD" style layout: 50% bottom for keyboard, 50% top split between Code (75%) and Notes (25%).
 - **Strict Scrolling**: Code view now strictly follows the active line using `scrollIntoView`, ensuring it never leaves the viewport.
+- **Frozen Layout**: Implemented rigid `h-screen` layout to prevent window scrolling, locking the keyboard and notes sections in place ("frozen HUD").
 
 ✅ FASE 4: Mejora del Generador de Código AI
 Objetivos

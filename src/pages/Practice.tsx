@@ -257,9 +257,9 @@ export default function Practice() {
   return (
     <>
       <ThemeBackground theme={theme} />
-      <div className="min-h-screen flex flex-col">
+      <div className="h-screen w-full flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <div className="border-b bg-background/80 backdrop-blur-sm px-4 py-2 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex-none border-b bg-background/80 backdrop-blur-sm px-4 py-2 flex items-center justify-between z-10">
           <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Regresar
@@ -309,7 +309,7 @@ export default function Practice() {
                   <div
                     key={lineIdx}
                     id={`line-${lineIdx}`}
-                    className="flex items-center min-h-[32px]"
+                    className="flex items-center min-h-[32px] scroll-mt-4"
                     style={{ lineHeight: '32px' }}
                   >
                     <span className="text-muted-foreground mr-4 select-none w-8 text-right opacity-50">
@@ -355,7 +355,7 @@ export default function Practice() {
             </div>
 
             {/* Notes Panel (25% Width) */}
-            <div className="w-1/4 border-l border-border/50">
+            <div className="w-1/4 border-l border-border/50 h-full overflow-hidden">
               <NotesPanel
                 notes={project.notes}
                 comments={project.comments}
@@ -367,7 +367,7 @@ export default function Practice() {
 
           {/* Bottom Section: Virtual Keyboard (50% Height) */}
           {config.showKeyboard && (
-            <div className="h-[50vh] border-t border-border/50 bg-background/95 backdrop-blur shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-20">
+            <div className="h-[50vh] flex-none border-t border-border/50 bg-background/95 backdrop-blur shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-30">
               <VirtualKeyboard
                 nextKey={nextChar}
                 pressedKey={pressedKey}
