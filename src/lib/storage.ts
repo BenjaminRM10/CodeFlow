@@ -7,21 +7,33 @@ const STORAGE_KEYS = {
   COURSES: 'appcreator_courses',
   FOLDERS: 'appcreator_folders',
   DAILY_PROGRESS: 'appcreator_daily_progress',
+  ACHIEVEMENTS: 'appcreator_achievements',
 };
 
 const DEFAULT_CONFIG: AppConfig = {
-  aiProvider: 'openai',
-  openaiKey: '',
-  grokKey: '',
-  geminiKey: '',
-  model: 'gpt-4o',
-  searchProvider: 'serper',
-  searchApiKey: '',
+  // Features
   showComments: true,
   showKeyboard: true,
+  showFingerGuide: true,
+
+  // Audio
+  soundEnabled: true,
+  soundVolume: 0.5,
+  soundType: 'mechanical',
+
+  // Visuals
+  fontSize: 'medium',
+  cursorStyle: 'line',
+  smoothCaret: true,
+
+  // Goals
   dailyGoalMinutes: 15,
+
+  // I18n
   appLanguage: 'es',
   keyboardLayout: 'es',
+
+  // Theme
   theme: 'dark',
 };
 
@@ -120,6 +132,20 @@ export const storage = {
     }
 
     localStorage.setItem(STORAGE_KEYS.DAILY_PROGRESS, JSON.stringify(progress));
+  },
+
+  // Achievements
+  getUnlockedAchievements(): string[] {
+    const stored = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
+    return stored ? JSON.parse(stored) : [];
+  },
+
+  saveUnlockedAchievement(id: string): void {
+    const unlocked = this.getUnlockedAchievements();
+    if (!unlocked.includes(id)) {
+      unlocked.push(id);
+      localStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(unlocked));
+    }
   },
 
   initializeDefaultProject(): boolean {

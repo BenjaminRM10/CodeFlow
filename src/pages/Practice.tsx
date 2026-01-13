@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+// import { motion } from 'framer-motion'; // Removed for performance
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -8,14 +9,11 @@ import { Project } from '@/types';
 import { ThemeBackground } from '@/components/ThemeBackground';
 import { VirtualKeyboard } from '@/components/VirtualKeyboard';
 import { NotesPanel } from '@/components/NotesPanel';
+import { CodeLine, CharacterState } from '@/components/CodeLine';
+import { soundManager } from '@/lib/sounds';
 
 
-
-interface CharacterState {
-  status: 'correct' | 'incorrect' | 'pending';
-  attempts: number;
-  corrected: boolean;
-}
+// Interface moved to CodeLine component
 
 // Ensure code is always array for practice
 interface PracticeProject extends Omit<Project, 'code'> {
@@ -53,6 +51,11 @@ export default function Practice() {
     setConfig(cfg);
     setTheme(cfg.theme);
 
+    // Init Audio
+    if (cfg.soundEnabled) {
+      soundManager.setVolume(cfg.soundVolume);
+    }
+
     if (!projectId) {
       navigate('/');
       return;
@@ -82,6 +85,11 @@ export default function Practice() {
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!isActive || !project) return;
+
+    // Play Sound
+    if (config.soundEnabled) {
+      soundManager.play(config.soundType);
+    }
 
     setPressedKey(e.key);
     setTimeout(() => setPressedKey(null), 150);
@@ -170,8 +178,10 @@ export default function Practice() {
 
       // Horizontal scroll
       if (codeAreaRef.current) {
-        const charWidth = 9.6;
+        const fontSizePx = config.fontSize === 'small' ? 14 : config.fontSize === 'large' ? 18 : 16;
+        const charWidth = fontSizePx * 0.6; // approx
         const containerWidth = codeAreaRef.current.offsetWidth;
+        // Adjust scroll threshold based on font size roughly
         const scrollThreshold = containerWidth - 30 * charWidth;
         if (currentCol * charWidth > scrollThreshold) {
           codeAreaRef.current.scrollLeft = (currentCol - 30) * charWidth;
@@ -185,7 +195,7 @@ export default function Practice() {
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isActive, currentLine, currentCol, typedLines, charStates, project]); // Added charStates dependency
+  }, [isActive, currentLine, currentCol, typedLines, charStates, project, config]); // Added config dependency for sound
 
   const scrollToLine = (lineIndex: number) => {
     // Strict scrolling: Ensure the defined line is at the top (or very close)
@@ -254,47 +264,71 @@ export default function Practice() {
 
   const nextChar = project.code[currentLine]?.[currentCol] || '';
 
+  // Font Size Class
+  const fontSizeClass =
+    config.fontSize === 'small' ? 'text-sm' :
+      config.fontSize === 'large' ? 'text-lg' :
+        'text-base'; // medium default
+
   return (
     <>
       <ThemeBackground theme={theme} />
-      <div className="h-screen w-full flex flex-col overflow-hidden">
+      <div className="h-screen w-full flex flex-col overflow-hidden bg-gray-950">
         {/* Top Bar */}
-        <div className="flex-none border-b bg-background/80 backdrop-blur-sm px-4 py-2 flex items-center justify-between z-10">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+        <div className="flex-none border-b border-white/10 bg-gray-950/80 backdrop-blur-md px-4 py-3 flex items-center justify-between z-10 shadow-lg relative">
+          {/* Subtle gradient line at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+
+          <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="text-gray-400 hover:text-white hover:bg-white/10">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Regresar
+            Back
           </Button>
 
-          <div className="flex items-center gap-6">
-            <div className="text-sm">
-              <span className="text-muted-foreground">WPM:</span>{' '}
-              <span className="font-mono font-bold">{metrics.wpm}</span>
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] uppercase tracking-wider text-gray-500">WPM</span>
+              <span className="font-mono font-bold text-xl text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]">{metrics.wpm}</span>
             </div>
-            <div className="text-sm">
-              <span className="text-muted-foreground">Precisión:</span>{' '}
-              <span className="font-mono font-bold">{metrics.accuracy}%</span>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] uppercase tracking-wider text-gray-500">Accuracy</span>
+              <span className="font-mono font-bold text-xl text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.3)]">{metrics.accuracy}%</span>
             </div>
-            <div className="text-sm">
-              <span className="text-muted-foreground">Correcciones:</span>{' '}
-              <span className="font-mono font-bold text-yellow-400">{metrics.corrections}</span>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] uppercase tracking-wider text-gray-500">Corrections</span>
+              <span className="font-mono font-bold text-xl text-yellow-400">{metrics.corrections}</span>
             </div>
-            <div className="w-32">
-              <Progress value={metrics.progress} />
+            <div className="w-48 flex flex-col justify-center gap-1">
+              <span className="text-[10px] text-gray-500 text-right">{Math.round(metrics.progress)}%</span>
+              <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                  style={{ width: `${metrics.progress}%` }}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={reset}>
-              Reiniciar
+          <div className="flex items-center gap-3">
+            <Button size="sm" variant="ghost" onClick={reset} className="text-gray-400 hover:text-white hover:bg-white/5">
+              Reset
             </Button>
-            <Button size="sm" onClick={togglePractice}>
+            <Button
+              size="sm"
+              onClick={togglePractice}
+              className={`
+                    min-w-[100px] transition-all duration-300 shadow-lg
+                    ${isActive
+                  ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20'
+                  : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0 shadow-purple-500/20'
+                }
+                `}
+            >
               {isActive ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-              {isActive ? 'Pausar' : 'Empezar'}
+              {isActive ? 'Pause' : 'Start'}
             </Button>
           </div>
         </div>
 
-        {/* Main Content */}
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Top Section: Code & Notes (50% Height) */}
@@ -302,54 +336,23 @@ export default function Practice() {
             {/* Code Area (75% Width) */}
             <div
               ref={codeAreaRef}
-              className="w-3/4 overflow-auto bg-card/50 backdrop-blur-sm p-8 font-mono text-sm scroll-smooth"
+              className={`w-3/4 overflow-auto bg-card/50 backdrop-blur-sm p-8 font-mono scroll-smooth transition-all duration-200 ${fontSizeClass}`}
             >
               <div className="min-h-full pb-[40vh]"> {/* Padding bottom to allow scrolling last lines to top */}
                 {project.code.map((line, lineIdx) => (
-                  <div
+                  <CodeLine
                     key={lineIdx}
-                    id={`line-${lineIdx}`}
-                    className="flex items-center min-h-[32px] scroll-mt-4"
-                    style={{ lineHeight: '32px' }}
-                  >
-                    <span className="text-muted-foreground mr-4 select-none w-8 text-right opacity-50">
-                      {lineIdx + 1}
-                    </span>
-                    <div className="flex-1 relative whitespace-pre">
-                      {line.split('').map((char, charIdx) => {
-                        const key = `${lineIdx}-${charIdx}`;
-                        const state = charStates[key];
-                        const isCurrent = lineIdx === currentLine && charIdx === currentCol;
-
-                        let charClass = 'text-muted-foreground/60';
-
-                        if (state && state.status !== 'pending') {
-                          if (state.status === 'correct') {
-                            charClass = state.corrected
-                              ? 'text-green-500'
-                              : 'text-foreground font-medium';
-                          } else if (state.status === 'incorrect') {
-                            charClass = 'text-destructive bg-destructive/20 rounded-sm';
-                          }
-                        }
-
-                        return (
-                          <span key={charIdx} className="relative">
-                            {isCurrent && isActive && (
-                              <span className="absolute inset-0 border-l-2 border-primary animate-pulse shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
-                            )}
-                            <span className={charClass}>
-                              {char}
-                            </span>
-                          </span>
-                        );
-                      })}
-                      {/* Cursor at end of line */}
-                      {lineIdx === currentLine && currentCol === line.length && isActive && (
-                        <span className="inline-block w-0 border-l-2 border-primary animate-pulse shadow-[0_0_8px_rgba(var(--primary),0.5)]" />
-                      )}
-                    </div>
-                  </div>
+                    lineIndex={lineIdx}
+                    lineContent={line}
+                    typedLine={typedLines[lineIdx]}
+                    isActive={lineIdx === currentLine}
+                    isPracticeActive={isActive}
+                    currentCol={currentCol}
+                    charStates={charStates}
+                    // Config Props
+                    cursorStyle={config.cursorStyle}
+                    smoothCaret={config.smoothCaret}
+                  />
                 ))}
               </div>
             </div>
@@ -371,7 +374,7 @@ export default function Practice() {
               <VirtualKeyboard
                 nextKey={nextChar}
                 pressedKey={pressedKey}
-                showFingerGuide={true}
+                showFingerGuide={config.showFingerGuide}
               />
             </div>
           )}

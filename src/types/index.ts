@@ -39,20 +39,20 @@ export interface Folder {
 }
 
 export interface AppConfig {
-  // AI Configuration
-  aiProvider: AIProvider;
-  openaiKey: string;
-  grokKey: string;
-  geminiKey: string;
-  model: string;
-
-  // Search Configuration
-  searchProvider: SearchProvider;
-  searchApiKey: string;
-
   // Features
   showComments: boolean;
   showKeyboard: boolean;
+  showFingerGuide: boolean;
+
+  // Audio
+  soundEnabled: boolean;
+  soundVolume: number; // 0-1
+  soundType: 'mechanical' | 'laptop' | 'bubble';
+
+  // Visuals
+  fontSize: 'small' | 'medium' | 'large';
+  cursorStyle: 'block' | 'line' | 'underline';
+  smoothCaret: boolean;
 
   // Goals
   dailyGoalMinutes: number;
@@ -63,6 +63,11 @@ export interface AppConfig {
 
   // Theme
   theme: 'light' | 'dark';
+
+  // Hidden / Env
+  aiProvider?: AIProvider; // Optional now, managed by env possibly or default
+  model?: string;
+  // searchProvider, etc. removed from UI config, can keep in type if used internally but user wanted "functional things"
 }
 
 export interface TypingMetrics {

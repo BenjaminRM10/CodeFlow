@@ -7,8 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { storage } from '@/lib/storage';
-import { AppConfig, AIProvider, SearchProvider } from '@/types';
-import { useToast } from '@/hooks/use-toast';
+import { AppConfig } from '@/types';
+import { toast } from 'sonner';
+import { Volume2, Monitor, Keyboard, Type, Globe, Trophy } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Slider } from '@/components/ui/slider';
 
 interface SettingsModalProps {
   open: boolean;
@@ -17,7 +20,6 @@ interface SettingsModalProps {
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [config, setConfig] = useState<AppConfig>(storage.getConfig());
-  const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
@@ -25,237 +27,220 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
   }, [open]);
 
-  const validateKey = (key: string) => {
-    if (key && (key.includes(' ') || key.startsWith('npx') || key.startsWith('npm'))) {
-      return false;
-    }
-    return true;
-  };
-
   const handleSave = () => {
-    if (
-      (config.aiProvider === 'openai' && !validateKey(config.openaiKey)) ||
-      (config.aiProvider === 'grok' && !validateKey(config.grokKey)) ||
-      (config.aiProvider === 'gemini' && !validateKey(config.geminiKey)) ||
-      !validateKey(config.searchApiKey)
-    ) {
-      toast({
-        title: 'Error de validación',
-        description: 'Las API Keys no deben contener espacios ni parecer comandos (npx, npm)',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     storage.setConfig(config);
     document.documentElement.classList.toggle('dark', config.theme === 'dark');
-    toast({
-      title: 'Configuración guardada',
-      description: 'Los cambios se han aplicado correctamente',
+    toast.success('Configuración guardada', {
+      description: 'Tus preferencias han sido actualizadas',
     });
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Configuración</DialogTitle>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col bg-gray-950 border-gray-800 text-white p-0 gap-0">
+        <DialogHeader className="p-6 border-b border-gray-800">
+          <DialogTitle className="text-xl font-bold flex items-center gap-2">
+            <Monitor className="w-5 h-5 text-purple-500" />
+            Configuración
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="space-y-4">
-            <h3 className="font-semibold">Proveedor de IA</h3>
-            <div className="space-y-2">
-              <Label>Proveedor</Label>
-              <Select value={config.aiProvider} onValueChange={(v) => setConfig({ ...config, aiProvider: v as AIProvider })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="grok">Grok (xAI)</SelectItem>
-                  <SelectItem value="gemini">Gemini (Google)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          <Tabs defaultValue="experience" className="w-full">
+            <TabsList className="w-full grid grid-cols-3 bg-gray-900">
+              <TabsTrigger value="experience">Experiencia</TabsTrigger>
+              <TabsTrigger value="appearance">Apariencia</TabsTrigger>
+              <TabsTrigger value="general">General</TabsTrigger>
+            </TabsList>
 
-            {config.aiProvider === 'openai' && (
-              <>
-                <div className="space-y-2">
-                  <Label>API Key de OpenAI</Label>
-                  <Input
-                    type="password"
-                    value={config.openaiKey}
-                    onChange={(e) => setConfig({ ...config, openaiKey: e.target.value })}
-                    placeholder="sk-..."
-                    className={config.openaiKey && (config.openaiKey.includes(' ') || config.openaiKey.startsWith('npx')) ? "border-red-500" : ""}
+            <TabsContent value="experience" className="space-y-6 mt-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Teclado Visual</Label>
+                    <p className="text-sm text-gray-400">Mostrar el teclado con guía de dedos</p>
+                  </div>
+                  <Switch
+                    checked={config.showKeyboard}
+                    onCheckedChange={(checked) => setConfig({ ...config, showKeyboard: checked })}
                   />
-                  {config.openaiKey && (config.openaiKey.includes(' ') || config.openaiKey.startsWith('npx')) && (
-                    <p className="text-sm text-red-500">La clave no debe contener espacios ni comandos</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Guía de Dedos</Label>
+                    <p className="text-sm text-gray-400">Colorear teclas según el dedo correcto</p>
+                  </div>
+                  <Switch
+                    checked={config.showFingerGuide}
+                    onCheckedChange={(checked) => setConfig({ ...config, showFingerGuide: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Ayudas IA</Label>
+                    <p className="text-sm text-gray-400">Mostrar notas y explicaciones inteligentes</p>
+                  </div>
+                  <Switch
+                    checked={config.showComments}
+                    onCheckedChange={(checked) => setConfig({ ...config, showComments: checked })}
+                  />
+                </div>
+
+                <Separator className="bg-gray-800" />
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Volume2 className="w-4 h-4 text-purple-400" />
+                    <Label className="text-base">Sonido de Tecleo</Label>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm text-gray-400">Activar Sonidos</Label>
+                    <Switch
+                      checked={config.soundEnabled}
+                      onCheckedChange={(checked) => setConfig({ ...config, soundEnabled: checked })}
+                    />
+                  </div>
+
+                  {config.soundEnabled && (
+                    <>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <Label className="text-sm text-gray-400">Volumen</Label>
+                          <span className="text-xs text-gray-500">{Math.round(config.soundVolume * 100)}%</span>
+                        </div>
+                        <Slider
+                          value={[config.soundVolume]}
+                          max={1}
+                          step={0.1}
+                          onValueChange={(vals) => setConfig({ ...config, soundVolume: vals[0] })}
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm text-gray-400">Tipo de Switch</Label>
+                        <Select value={config.soundType} onValueChange={(v) => setConfig({ ...config, soundType: v as any })}>
+                          <SelectTrigger className="bg-gray-900 border-gray-700">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                            <SelectItem value="mechanical">Mecánico (Clicky)</SelectItem>
+                            <SelectItem value="laptop">Laptop (Suave)</SelectItem>
+                            <SelectItem value="bubble">Burbuja (Pop)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
                   )}
                 </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="appearance" className="space-y-6 mt-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Modelo</Label>
-                  <Input
-                    value={config.model}
-                    onChange={(e) => setConfig({ ...config, model: e.target.value })}
-                    placeholder="gpt-4o"
+                  <div className="flex items-center gap-2 mb-2">
+                    <Type className="w-4 h-4 text-pink-400" />
+                    <Label>Tamaño de Fuente</Label>
+                  </div>
+                  <Select value={config.fontSize} onValueChange={(v) => setConfig({ ...config, fontSize: v as any })}>
+                    <SelectTrigger className="bg-gray-900 border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                      <SelectItem value="small">Pequeño (Compacto)</SelectItem>
+                      <SelectItem value="medium">Normal (Equilibrado)</SelectItem>
+                      <SelectItem value="large">Grande (Legibilidad)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Estilo del Cursor</Label>
+                  <Select value={config.cursorStyle} onValueChange={(v) => setConfig({ ...config, cursorStyle: v as any })}>
+                    <SelectTrigger className="bg-gray-900 border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                      <SelectItem value="block">Bloque ▋</SelectItem>
+                      <SelectItem value="line">Línea |</SelectItem>
+                      <SelectItem value="underline">Subrayado _</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Animación Suave</Label>
+                    <p className="text-sm text-gray-400">El cursor se desliza suavemente</p>
+                  </div>
+                  <Switch
+                    checked={config.smoothCaret}
+                    onCheckedChange={(checked) => setConfig({ ...config, smoothCaret: checked })}
                   />
                 </div>
-              </>
-            )}
-
-            {config.aiProvider === 'grok' && (
-              <div className="space-y-2">
-                <Label>API Key de Grok</Label>
-                <Input
-                  type="password"
-                  value={config.grokKey}
-                  onChange={(e) => setConfig({ ...config, grokKey: e.target.value })}
-                  placeholder="xai-..."
-                />
               </div>
-            )}
+            </TabsContent>
 
-            {config.aiProvider === 'gemini' && (
-              <div className="space-y-2">
-                <Label>API Key de Gemini</Label>
-                <Input
-                  type="password"
-                  value={config.geminiKey}
-                  onChange={(e) => setConfig({ ...config, geminiKey: e.target.value })}
-                  placeholder="..."
-                  className={config.geminiKey && (config.geminiKey.includes(' ') || config.geminiKey.startsWith('npx')) ? "border-red-500" : ""}
-                />
-                {config.geminiKey && (config.geminiKey.includes(' ') || config.geminiKey.startsWith('npx')) && (
-                  <p className="text-sm text-red-500">La clave no debe contener espacios ni comandos</p>
-                )}
+            <TabsContent value="general" className="space-y-6 mt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="w-4 h-4 text-blue-400" />
+                    <Label>Idioma de la App</Label>
+                  </div>
+                  <Select value={config.appLanguage} onValueChange={(v) => setConfig({ ...config, appLanguage: v as any })}>
+                    <SelectTrigger className="bg-gray-900 border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                      <SelectItem value="es">Español</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Keyboard className="w-4 h-4 text-green-400" />
+                    <Label>Distribución de Teclado</Label>
+                  </div>
+                  <Select value={config.keyboardLayout} onValueChange={(v) => setConfig({ ...config, keyboardLayout: v as any })}>
+                    <SelectTrigger className="bg-gray-900 border-gray-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                      <SelectItem value="es">Español (ISO)</SelectItem>
+                      <SelectItem value="en">English (ANSI)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy className="w-4 h-4 text-yellow-400" />
+                    <Label>Meta Diaria (Minutos)</Label>
+                  </div>
+                  <Input
+                    type="number"
+                    value={config.dailyGoalMinutes}
+                    onChange={(e) => setConfig({ ...config, dailyGoalMinutes: parseInt(e.target.value) || 0 })}
+                    className="bg-gray-900 border-gray-700"
+                  />
+                </div>
               </div>
-            )}
-          </div>
+            </TabsContent>
+          </Tabs>
+        </div>
 
-          <Separator />
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">Búsqueda Web</h3>
-            <div className="space-y-2">
-              <Label>Proveedor de Búsqueda</Label>
-              <Select value={config.searchProvider} onValueChange={(v) => setConfig({ ...config, searchProvider: v as SearchProvider })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="serper">Serper.dev</SelectItem>
-                  <SelectItem value="bing">Bing</SelectItem>
-                  <SelectItem value="google">Google CSE</SelectItem>
-                  <SelectItem value="serpapi">SerpAPI</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>API Key</Label>
-              <Input
-                type="password"
-                value={config.searchApiKey}
-                onChange={(e) => setConfig({ ...config, searchApiKey: e.target.value })}
-                placeholder="API Key del proveedor de búsqueda"
-                className={config.searchApiKey && (config.searchApiKey.includes(' ') || config.searchApiKey.startsWith('npx')) ? "border-red-500" : ""}
-              />
-              {config.searchApiKey && (config.searchApiKey.includes(' ') || config.searchApiKey.startsWith('npx')) && (
-                <p className="text-sm text-red-500">La clave no debe contener espacios ni comandos</p>
-              )}
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">Funciones de Asistencia</h3>
-            <div className="flex items-center justify-between">
-              <Label>Mostrar Comentarios de IA</Label>
-              <Switch
-                checked={config.showComments}
-                onCheckedChange={(checked) => setConfig({ ...config, showComments: checked })}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Mostrar Teclado Visual</Label>
-              <Switch
-                checked={config.showKeyboard}
-                onCheckedChange={(checked) => setConfig({ ...config, showKeyboard: checked })}
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">Metas</h3>
-            <div className="space-y-2">
-              <Label>Meta Diaria (minutos)</Label>
-              <Input
-                type="number"
-                min="1"
-                value={config.dailyGoalMinutes}
-                onChange={(e) => setConfig({ ...config, dailyGoalMinutes: parseInt(e.target.value) || 15 })}
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">Internacionalización</h3>
-            <div className="space-y-2">
-              <Label>Idioma de la Aplicación</Label>
-              <Select value={config.appLanguage} onValueChange={(v) => setConfig({ ...config, appLanguage: v as 'es' | 'en' })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="es">Español</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Distribución del Teclado</Label>
-              <Select value={config.keyboardLayout} onValueChange={(v) => setConfig({ ...config, keyboardLayout: v as 'es' | 'en' })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="es">Español</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">Tema</h3>
-            <Select value={config.theme} onValueChange={(v) => setConfig({ ...config, theme: v as 'light' | 'dark' })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="light">Claro</SelectItem>
-                <SelectItem value="dark">Oscuro</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave}>
-              Guardar Cambios
-            </Button>
-          </div>
+        <div className="flex justify-end gap-2 p-6 border-t border-gray-800 bg-gray-950">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="hover:bg-gray-800 text-gray-400 hover:text-white">
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white border-0">
+            Guardar Cambios
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

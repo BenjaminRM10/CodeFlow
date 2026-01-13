@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileManager } from '@/components/FileManager';
 import { ThemeBackground } from '@/components/ThemeBackground';
 import { CreateProjectModal } from '@/components/CreateProjectModal';
 import { CreateCourseModal } from '@/components/CreateCourseModal';
@@ -9,12 +8,22 @@ import { storage } from '@/lib/storage';
 import { Project, Course, Folder } from '@/types';
 import { generateCode, generateCourseOutline } from '@/services/aiService';
 import { performWebSearch, buildSearchQuery } from '@/services/searchService';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { Loader2, Zap, Target, TrendingUp, Plus, Settings, Trophy } from 'lucide-react';
+import { StatsCard } from '@/components/ui/StatsCard';
+import { ProjectCard } from '@/components/ui/ProjectCard';
+import { Button } from '@/components/ui/button';
+import { StatsDetailboard } from '@/components/StatsDetailboard';
+import { StreakTracker } from '@/components/StreakTracker';
+import { Leaderboard } from '@/components/Leaderboard';
+import { AchievementsModal, UnlockNotification } from '@/components/AchievementsModal';
+
+import { ACHIEVEMENTS } from '@/types/achievements';
+
 
 const Index = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  // const { toast } = useToast(); // Removed
   const [projects, setProjects] = useState<Project[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -23,13 +32,88 @@ const Index = () => {
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [createCourseOpen, setCreateCourseOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
+  const [newlyUnlockedAchievement, setNewlyUnlockedAchievement] = useState<any>(null);
+
+  const calculateStreak = (projects: Project[]) => {
+    if (!projects.length) return 0;
+
+    const dates = projects.map(p => new Date(p.createdAt || 0).toDateString());
+    // Unique dates sorted descending (newest first)
+    const uniqueDates = [...new Set(dates)].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    if (!uniqueDates.length) return 0;
+
+    let streak = 0;
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+    // Check if the most recent practice was today or yesterday
+    // If last practice was older than yesterday, streak is broken (0), unless we want to show 0.
+    // Actually, if last practice was older than yesterday, streak should be 0. 
+    // But let's check current consecutive days ending at today OR yesterday.
+
+    const lastPractice = uniqueDates[0];
+    if (lastPractice !== today && lastPractice !== yesterday) {
+      return 0;
+    }
+
+    streak = 1;
+    for (let i = 0; i < uniqueDates.length - 1; i++) {
+      const curr = new Date(uniqueDates[i]);
+      const next = new Date(uniqueDates[i + 1]);
+      const diffDays = Math.round((curr.getTime() - next.getTime()) / 86400000);
+
+      if (diffDays === 1) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  };
+
+  // Memoize streak to avoid recalculation on every render if projects didn't change? 
+  // For now simple variable is fine as projects is state.
+  const currentStreak = calculateStreak(projects);
+
+  useEffect(() => {
+    // Check for achievements based on loaded projects
+    const allStats = {
+      projectsCompleted: projects.length,
+      maxWPM: Math.max(...projects.map(p => p.wpm || 0), 0),
+      perfectProjects: projects.filter(p => (p.accuracy || 0) === 100).length,
+      languagesPracticed: new Set(projects.map(p => p.language)).size,
+      totalTime: 0,
+      currentStreak: currentStreak
+    };
+
+    const storedUnlocked = storage.getUnlockedAchievements();
+    const newUnlockIds: string[] = [];
+
+    ACHIEVEMENTS.forEach(achievement => {
+      if (!storedUnlocked.includes(achievement.id) && achievement.requirement(allStats)) {
+        newUnlockIds.push(achievement.id);
+        storage.saveUnlockedAchievement(achievement.id);
+        setNewlyUnlockedAchievement(achievement);
+      }
+    });
+
+    if (newUnlockIds.length > 0) {
+      setUnlockedAchievements([...storedUnlocked, ...newUnlockIds]);
+      // Play sound? (Optional)
+    } else {
+      setUnlockedAchievements(storedUnlocked);
+    }
+  }, [projects, currentStreak]);
 
   useEffect(() => {
     const initialized = storage.initializeDefaultProject();
     if (initialized) {
-      toast({
-        title: "👋 ¡Bienvenido!",
+      toast.success("👋 ¡Bienvenido!", {
         description: "¡Prueba el proyecto demo para comenzar!",
         duration: 5000,
       });
@@ -47,13 +131,15 @@ const Index = () => {
     document.documentElement.classList.toggle('dark', config.theme === 'dark');
   };
 
-  const handleOpenProject = (projectId: string) => {
-    navigate(`/practice?id=${projectId}`);
-  };
 
-  const handleOpenCourse = (courseId: string) => {
-    setCurrentFolderId(courseId);
-  };
+  // Stats Calculation
+  const totalProjects = projects.length;
+  const averageWPM = totalProjects > 0
+    ? Math.round(projects.reduce((acc, p) => acc + (p.wpm || 0), 0) / totalProjects)
+    : 0;
+  const averageAccuracy = totalProjects > 0
+    ? Math.round(projects.reduce((acc, p) => acc + (p.accuracy || 0), 0) / totalProjects)
+    : 0;
 
   const handleCreateProject = async (data: { type: any; language: string; prompt: string }) => {
     setIsGenerating(true);
@@ -62,11 +148,9 @@ const Index = () => {
       const apiKey = config.aiProvider === 'openai' ? config.openaiKey :
         config.aiProvider === 'grok' ? config.grokKey : config.geminiKey;
 
-      // Perform web search
       const searchQuery = buildSearchQuery(data.language);
       const searchResult = await performWebSearch(searchQuery, config.searchProvider, config.searchApiKey);
 
-      // Generate code
       const result = await generateCode({
         provider: config.aiProvider,
         apiKey,
@@ -93,16 +177,13 @@ const Index = () => {
       storage.saveProject(project);
       loadData();
 
-      toast({
-        title: 'Proyecto creado',
+      toast.success('Proyecto creado', {
         description: 'El proyecto se ha generado correctamente',
       });
     } catch (error) {
       console.error('Error creating project:', error);
-      toast({
-        title: 'Error',
+      toast.error('Error', {
         description: error instanceof Error ? error.message : 'No se pudo crear el proyecto',
-        variant: 'destructive',
       });
     } finally {
       setIsGenerating(false);
@@ -116,11 +197,9 @@ const Index = () => {
       const apiKey = config.aiProvider === 'openai' ? config.openaiKey :
         config.aiProvider === 'grok' ? config.grokKey : config.geminiKey;
 
-      // Perform web search once for the entire course
       const searchQuery = buildSearchQuery(data.language);
       const searchResult = await performWebSearch(searchQuery, config.searchProvider, config.searchApiKey);
 
-      // Generate course outline
       const outline = await generateCourseOutline({
         provider: config.aiProvider,
         apiKey,
@@ -130,7 +209,6 @@ const Index = () => {
         searchContext: searchResult.context,
       });
 
-      // Create course folder
       const courseId = Date.now().toString();
       const course: Course = {
         id: courseId,
@@ -141,10 +219,8 @@ const Index = () => {
         folderId: currentFolderId,
       };
 
-      // Generate each lesson
       for (let i = 0; i < outline.lessons.length; i++) {
         const lesson = outline.lessons[i];
-
         const result = await generateCode({
           provider: config.aiProvider,
           apiKey,
@@ -152,7 +228,7 @@ const Index = () => {
           language: data.language,
           prompt: lesson.description,
           type: 'editor',
-          searchContext: searchResult.context, // Reuse the same search context
+          searchContext: searchResult.context,
         });
 
         const project: Project = {
@@ -174,82 +250,174 @@ const Index = () => {
 
       storage.saveCourse(course);
       loadData();
-
-      toast({
-        title: 'Curso creado',
-        description: `Se han generado ${outline.lessons.length} lecciones`,
-      });
+      toast.success('Curso creado', { description: `Se han generado ${outline.lessons.length} lecciones` });
     } catch (error) {
-      console.error('Error creating course:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'No se pudo crear el curso',
-        variant: 'destructive',
-      });
+      toast.error('Error', { description: 'No se pudo crear el curso' });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleCreateFolder = () => {
-    const name = prompt('Nombre de la carpeta:');
-    if (!name) return;
-
-    const folder: Folder = {
-      id: Date.now().toString(),
-      name,
-      parentId: currentFolderId,
-      createdAt: new Date().toISOString(),
-    };
-
-    storage.saveFolder(folder);
-    loadData();
-  };
-
   return (
     <>
-      <ThemeBackground theme={theme} />
+      <div className="min-h-screen bg-gray-950 text-white relative overflow-hidden font-sans">
+        {/* Animated Background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/40 via-gray-950 to-gray-950 z-0" />
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px] animate-blob" />
+          <div className="absolute top-[20%] right-[-10%] w-[30%] h-[30%] bg-cyan-600/20 rounded-full blur-[100px] animate-blob animation-delay-2000" />
+          <div className="absolute bottom-[-10%] left-[20%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px] animate-blob animation-delay-4000" />
+        </div>
 
-      {isGenerating && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
-            <p className="text-lg font-semibold">Estamos creando tu contenido...</p>
-            <p className="text-sm text-muted-foreground">Esto puede tomar unos minutos</p>
+        {/* Header Content */}
+        <div className="relative z-10 container mx-auto px-6 py-12">
+          <div className="flex justify-between items-start mb-16">
+            <div className="flex items-center gap-6">
+              <img
+                src="/logo.jpg"
+                alt="CodeFlow Logo"
+                className="w-24 h-24 rounded-2xl shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-purple-500/30"
+              />
+              <div>
+                <h1 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-100 to-gray-300 tracking-tight">
+                  CodeFlow
+                  <span className="block text-purple-400 text-3xl md:text-4xl mt-2 font-light">Master the art of typing code</span>
+                </h1>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <Button
+                variant="outline"
+                className="border-yellow-500/20 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400"
+                onClick={() => setAchievementsOpen(true)}
+              >
+                <Trophy className="w-5 h-5 mr-2" />
+                Achievements
+              </Button>
+              <Button
+                variant="outline"
+                className="border-gray-700 bg-gray-900/50 hover:bg-gray-800 text-gray-300"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <Settings className="w-5 h-5" />
+              </Button>
+              <Button
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25 transition-all hover:scale-105"
+                onClick={() => setCreateProjectOpen(true)}
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Nuevo Proyecto
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StatsCard
+              icon={<Zap />}
+              label="PROMEDIO WPM"
+              value={averageWPM}
+              gradient="from-cyan-500 to-blue-500"
+            />
+            <StatsCard
+              icon={<Target />}
+              label="PRECISIÓN MEDIA"
+              value={`${averageAccuracy}%`}
+              gradient="from-green-500 to-emerald-500"
+            />
+            <StatsCard
+              icon={<TrendingUp />}
+              label="PROYECTOS"
+              value={totalProjects}
+              gradient="from-purple-500 to-pink-500"
+            />
+          </div>
+
+
+          {/* Gamification Dashboard */}
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 mt-12 mb-20">
+            {/* Left Column: Charts & Streak */}
+            <div className="xl:col-span-3 space-y-8">
+              <StatsDetailboard projects={projects} />
+              <StreakTracker currentStreak={currentStreak} projects={projects} />
+            </div>
+
+            {/* Right Column: Leaderboard */}
+            <div className="xl:col-span-1 h-full">
+              <Leaderboard />
+            </div>
+          </div>
+
+          {/* Projects Section */}
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-semibold text-white/90 flex items-center gap-2">
+                <span className="w-2 h-8 bg-purple-500 rounded-full" />
+                Mis Proyectos
+              </h2>
+            </div>
+
+            {projects.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {projects.map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20 bg-gray-900/30 rounded-2xl border border-gray-800 border-dashed backdrop-blur-sm">
+                <p className="text-gray-400 mb-6 text-lg">Aún no tienes proyectos creados.</p>
+                <Button
+                  variant="outline"
+                  className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                  onClick={() => setCreateProjectOpen(true)}
+                >
+                  Comenzar ahora
+                </Button>
+              </div>
+            )}
           </div>
         </div>
-      )}
 
-      <FileManager
-        projects={projects}
-        courses={courses}
-        folders={folders}
-        currentFolderId={currentFolderId}
-        onOpenProject={handleOpenProject}
-        onOpenCourse={handleOpenCourse}
-        onNavigateToFolder={setCurrentFolderId}
-        onCreateProject={() => setCreateProjectOpen(true)}
-        onCreateCourse={() => setCreateCourseOpen(true)}
-        onCreateFolder={handleCreateFolder}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
+        {/* Modals & Overlays */}
+        {isGenerating && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center">
+            <div className="text-center space-y-4 p-8 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl">
+              <Loader2 className="h-12 w-12 animate-spin mx-auto text-purple-500" />
+              <p className="text-lg font-semibold text-white">Creando tu contenido...</p>
+              <p className="text-sm text-gray-400">Usando inteligencia artificial</p>
+            </div>
+          </div>
+        )}
 
-      <CreateProjectModal
-        open={createProjectOpen}
-        onOpenChange={setCreateProjectOpen}
-        onCreateProject={handleCreateProject}
-      />
+        <CreateProjectModal
+          open={createProjectOpen}
+          onOpenChange={setCreateProjectOpen}
+          onCreateProject={handleCreateProject}
+        />
 
-      <CreateCourseModal
-        open={createCourseOpen}
-        onOpenChange={setCreateCourseOpen}
-        onCreateCourse={handleCreateCourse}
-      />
+        <CreateCourseModal
+          open={createCourseOpen}
+          onOpenChange={setCreateCourseOpen}
+          onCreateCourse={handleCreateCourse}
+        />
 
-      <SettingsModal
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
+        <SettingsModal
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+        />
+
+        <AchievementsModal
+          isOpen={achievementsOpen}
+          onClose={() => setAchievementsOpen(false)}
+          achievements={ACHIEVEMENTS}
+          unlockedIds={unlockedAchievements}
+        />
+
+        <UnlockNotification
+          achievement={newlyUnlockedAchievement}
+          onClose={() => setNewlyUnlockedAchievement(null)}
+        />
+      </div>
     </>
   );
 };
