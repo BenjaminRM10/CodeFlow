@@ -7,6 +7,7 @@ import { storage } from '@/lib/storage';
 import { Project } from '@/types';
 import { ThemeBackground } from '@/components/ThemeBackground';
 import { VirtualKeyboard } from '@/components/VirtualKeyboard';
+import { NotesPanel } from '@/components/NotesPanel';
 
 
 
@@ -343,38 +344,13 @@ export default function Practice() {
               ))}
             </div>
 
-            {/* Comments Panel */}
-            {config.showComments && (
-              <div className="flex-1 border-l overflow-auto bg-card/50 backdrop-blur-sm p-6 min-w-[300px]">
-                <h3 className="font-semibold mb-4 text-sm uppercase text-muted-foreground">Comentarios</h3>
-                <div className="space-y-4">
-                  {isActive ? (
-                    // Show only current line comment when active
-                    <div className="text-sm text-foreground">
-                      <span className="text-muted-foreground font-mono">Línea {currentLine + 1}:</span>
-                      <p className="mt-2">{project.comments?.[currentLine] || project.notes?.find(n => n.line === currentLine + 1)?.content || "Sin comentario"}</p>
-                    </div>
-                  ) : (
-                    // Show all comments when paused
-                    project.comments ? (
-                      project.comments.map((comment, idx) => (
-                        <div key={idx} className="text-sm">
-                          <span className="text-muted-foreground font-mono">Línea {idx + 1}:</span>
-                          <p className="mt-1 text-foreground">{comment}</p>
-                        </div>
-                      ))
-                    ) : (
-                      project.notes?.map((note, idx) => (
-                        <div key={idx} className="text-sm">
-                          <span className="text-muted-foreground font-mono">Línea {note.line}:</span>
-                          <p className="mt-1 text-foreground">{note.content}</p>
-                        </div>
-                      ))
-                    )
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Notes Panel */}
+            <NotesPanel
+              notes={project.notes}
+              comments={project.comments}
+              currentLine={currentLine}
+              isVisible={config.showComments}
+            />
           </div>
 
           {/* Virtual Keyboard */}

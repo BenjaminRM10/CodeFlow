@@ -504,7 +504,7 @@ Cambios Implementados
 - Controlled visibility via `SettingsModal` (using existing toggle).
 <!-- El agente documentará aquí -->
 
-FASE 3: Sistema de Notas Sincronizadas
+✅ FASE 3: Sistema de Notas Sincronizadas
 Objetivos
 
 Sincronizar panel de notas con línea actual de código
@@ -608,6 +608,12 @@ export const NotesPanel: React.FC<NotesPanelProps> = ({
               >
                 {/* Line number badge */}
                 <div className="flex items-center gap-2 mb-2">
+
+Cambios Implementados
+- Created `NotesPanel` component with auto-scroll capabilities.
+- Integrated synced notes in `Practice.tsx` replacing static comments.
+- Added visual highlighting for current line notes.
+- Supported both legacy `comments` array and new `notes` object structure.
                   <span
                     className={cn(
                       'text-xs px-2 py-1 rounded-full font-mono',
