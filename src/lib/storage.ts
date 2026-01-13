@@ -35,6 +35,11 @@ const DEFAULT_CONFIG: AppConfig = {
 
   // Theme
   theme: 'dark',
+
+  // AI & Search Defaults
+  aiProvider: 'gemini',
+  model: 'gemini-2.0-flash', // Updated to latest stable
+  searchProvider: 'serper',
 };
 
 export const storage = {

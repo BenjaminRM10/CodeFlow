@@ -66,10 +66,14 @@ export interface AppConfig {
   // Theme
   theme: 'light' | 'dark';
 
-  // Hidden / Env
-  aiProvider?: AIProvider; // Optional now, managed by env possibly or default
-  model?: string;
-  // searchProvider, etc. removed from UI config, can keep in type if used internally but user wanted "functional things"
+  // AI & Search Configuration (Backing for env vars and user overrides)
+  aiProvider: AIProvider;
+  model: string;
+  openaiKey?: string;
+  grokKey?: string;
+  geminiKey?: string;
+  searchProvider: SearchProvider;
+  searchApiKey?: string;
 }
 
 export interface TypingMetrics {
