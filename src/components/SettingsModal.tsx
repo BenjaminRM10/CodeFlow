@@ -25,7 +25,28 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     }
   }, [open]);
 
+  const validateKey = (key: string) => {
+    if (key && (key.includes(' ') || key.startsWith('npx') || key.startsWith('npm'))) {
+      return false;
+    }
+    return true;
+  };
+
   const handleSave = () => {
+    if (
+      (config.aiProvider === 'openai' && !validateKey(config.openaiKey)) ||
+      (config.aiProvider === 'grok' && !validateKey(config.grokKey)) ||
+      (config.aiProvider === 'gemini' && !validateKey(config.geminiKey)) ||
+      !validateKey(config.searchApiKey)
+    ) {
+      toast({
+        title: 'Error de validación',
+        description: 'Las API Keys no deben contener espacios ni parecer comandos (npx, npm)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     storage.setConfig(config);
     document.documentElement.classList.toggle('dark', config.theme === 'dark');
     toast({
@@ -68,7 +89,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     value={config.openaiKey}
                     onChange={(e) => setConfig({ ...config, openaiKey: e.target.value })}
                     placeholder="sk-..."
+                    className={config.openaiKey && (config.openaiKey.includes(' ') || config.openaiKey.startsWith('npx')) ? "border-red-500" : ""}
                   />
+                  {config.openaiKey && (config.openaiKey.includes(' ') || config.openaiKey.startsWith('npx')) && (
+                    <p className="text-sm text-red-500">La clave no debe contener espacios ni comandos</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Modelo</Label>
@@ -101,7 +126,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   value={config.geminiKey}
                   onChange={(e) => setConfig({ ...config, geminiKey: e.target.value })}
                   placeholder="..."
+                  className={config.geminiKey && (config.geminiKey.includes(' ') || config.geminiKey.startsWith('npx')) ? "border-red-500" : ""}
                 />
+                {config.geminiKey && (config.geminiKey.includes(' ') || config.geminiKey.startsWith('npx')) && (
+                  <p className="text-sm text-red-500">La clave no debe contener espacios ni comandos</p>
+                )}
               </div>
             )}
           </div>
@@ -131,7 +160,11 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 value={config.searchApiKey}
                 onChange={(e) => setConfig({ ...config, searchApiKey: e.target.value })}
                 placeholder="API Key del proveedor de búsqueda"
+                className={config.searchApiKey && (config.searchApiKey.includes(' ') || config.searchApiKey.startsWith('npx')) ? "border-red-500" : ""}
               />
+              {config.searchApiKey && (config.searchApiKey.includes(' ') || config.searchApiKey.startsWith('npx')) && (
+                <p className="text-sm text-red-500">La clave no debe contener espacios ni comandos</p>
+              )}
             </div>
           </div>
 

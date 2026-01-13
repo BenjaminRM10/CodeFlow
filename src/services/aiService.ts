@@ -26,6 +26,12 @@ export interface CourseOutline {
   }>;
 }
 
+const DEFAULT_MODELS = {
+  openai: 'gpt-4o',
+  grok: 'grok-beta',
+  gemini: 'gemini-2.5-flash',
+};
+
 const SYSTEM_PROMPT = `You are an expert programming instructor creating code for typing practice. 
 
 CRITICAL RULES:
@@ -53,12 +59,45 @@ Comments requirements:
 
 NO \\n escapes in code lines - each array element is ONE physical line.`;
 
+
+export function getDefaultApiKey(provider: string): string {
+  switch (provider) {
+    case 'gemini':
+      return import.meta.env.VITE_GEMINI_API_KEY || '';
+    default:
+      return '';
+  }
+}
+
 export async function generateCode(request: AIGenerationRequest): Promise<AIGenerationResponse> {
   const { provider, apiKey, model, language, prompt, type, searchContext } = request;
 
-  if (!apiKey) {
+  let trimmedKey = apiKey?.trim();
+
+  if (!trimmedKey) {
+    const defaultKey = getDefaultApiKey(provider);
+    if (defaultKey) {
+      trimmedKey = defaultKey;
+    }
+  }
+
+  if (!trimmedKey) {
     // Demo mode with simulated content
     return generateDemoContent(language, type);
+  }
+
+  if (trimmedKey.includes(' ') || trimmedKey.startsWith('npx') || trimmedKey.startsWith('npm')) {
+    throw new Error('Invalid API Key format. Keys should not contain spaces or start with commands like "npx"');
+  }
+
+  // Use provider-specific default model if the requested model seems invalid (e.g. OpenAI model for Gemini)
+  let effectiveModel = model;
+  if (provider === 'gemini' && model.startsWith('gpt')) {
+    effectiveModel = DEFAULT_MODELS.gemini;
+  } else if (provider === 'grok' && model.startsWith('gpt')) {
+    effectiveModel = DEFAULT_MODELS.grok;
+  } else if (provider === 'openai' && !model) {
+    effectiveModel = DEFAULT_MODELS.openai;
   }
 
   const userMessage = buildUserMessage(language, prompt, type, searchContext);
@@ -66,11 +105,11 @@ export async function generateCode(request: AIGenerationRequest): Promise<AIGene
   try {
     switch (provider) {
       case 'openai':
-        return await callOpenAI(apiKey, model, userMessage);
+        return await callOpenAI(trimmedKey, effectiveModel, userMessage);
       case 'grok':
-        return await callGrok(apiKey, model, userMessage);
+        return await callGrok(trimmedKey, effectiveModel, userMessage);
       case 'gemini':
-        return await callGemini(apiKey, model, userMessage);
+        return await callGemini(trimmedKey, effectiveModel, userMessage);
       default:
         throw new Error(`Unknown AI provider: ${provider}`);
     }
@@ -84,6 +123,25 @@ export async function generateCourseOutline(
   request: Omit<AIGenerationRequest, 'type'>
 ): Promise<CourseOutline> {
   const { provider, apiKey, model, language, prompt, searchContext } = request;
+
+  const trimmedKey = apiKey?.trim();
+  if (!trimmedKey) {
+    throw new Error('API key required for course generation');
+  }
+
+  if (trimmedKey.includes(' ') || trimmedKey.startsWith('npx') || trimmedKey.startsWith('npm')) {
+    throw new Error('Invalid API Key format. Keys should not contain spaces or start with commands like "npx"');
+  }
+
+  // Use provider-specific default model
+  let effectiveModel = model;
+  if (provider === 'gemini' && model.startsWith('gpt')) {
+    effectiveModel = DEFAULT_MODELS.gemini;
+  } else if (provider === 'grok' && model.startsWith('gpt')) {
+    effectiveModel = DEFAULT_MODELS.grok;
+  } else if (provider === 'openai' && !model) {
+    effectiveModel = DEFAULT_MODELS.openai;
+  }
 
   const outlinePrompt = `Create a comprehensive course curriculum for ${language}.
 User request: ${prompt}
@@ -112,39 +170,52 @@ Response format (JSON):
 
   try {
     let response: any;
-    
+
     switch (provider) {
       case 'openai':
         response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${apiKey}`,
+            'Authorization': `Bearer ${trimmedKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model,
+            model: effectiveModel,
             messages,
             response_format: { type: 'json_object' }
           }),
         });
         break;
-        
+
       case 'grok':
         response = await fetch('https://api.x.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${apiKey}`,
+            'Authorization': `Bearer ${trimmedKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ model, messages }),
+          body: JSON.stringify({ model: effectiveModel, messages }),
         });
         break;
-        
+
       case 'gemini':
-        // Gemini API implementation
-        throw new Error('Gemini not yet implemented');
-        
-      default:
+        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${effectiveModel}:generateContent?key=${trimmedKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `${messages.map(m => `${m.role}: ${m.content}`).join('\n\n')}\n\nResponse format (JSON):`
+              }]
+            }],
+            generationConfig: {
+              response_mime_type: "application/json"
+            }
+          }),
+        });
+        break;
         throw new Error(`Unknown provider: ${provider}`);
     }
 
@@ -153,9 +224,17 @@ Response format (JSON):
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
-    return JSON.parse(content);
-    
+
+    // Parse response based on provider structure
+    let content;
+    if (provider === 'gemini') {
+      content = data.candidates[0].content.parts[0].text;
+    } else {
+      content = data.choices[0].message.content;
+    }
+
+    return JSON.parse(cleanJson(content));
+
   } catch (error) {
     console.error('Course outline generation error:', error);
     throw error;
@@ -215,8 +294,31 @@ async function callGrok(apiKey: string, model: string, userMessage: string): Pro
 }
 
 async function callGemini(apiKey: string, model: string, userMessage: string): Promise<AIGenerationResponse> {
-  // Gemini API implementation would go here
-  throw new Error('Gemini provider not yet implemented');
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{
+          text: `${SYSTEM_PROMPT}\n\nUser request: ${userMessage}`
+        }]
+      }],
+      generationConfig: {
+        response_mime_type: "application/json"
+      }
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Gemini API error: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+  const content = data.candidates[0].content.parts[0].text;
+  return JSON.parse(cleanJson(content));
 }
 
 function buildUserMessage(
@@ -226,7 +328,7 @@ function buildUserMessage(
   searchContext?: string
 ): string {
   const today = new Date().toISOString().split('T')[0];
-  
+
   return `Today's date: ${today}
 
 ${searchContext ? `Latest ${language} information:\n${searchContext}\n\n` : ''}
@@ -264,4 +366,15 @@ function generateDemoContent(language: string, type: ProjectType): AIGenerationR
     code: demoCode,
     comments: demoComments,
   };
+}
+
+function cleanJson(text: string): string {
+  // Remove markdown code blocks if present
+  let clean = text.trim();
+  if (clean.startsWith('```json')) {
+    clean = clean.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+  } else if (clean.startsWith('```')) {
+    clean = clean.replace(/^```\s*/, '').replace(/\s*```$/, '');
+  }
+  return clean;
 }

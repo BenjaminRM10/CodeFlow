@@ -9,8 +9,10 @@ export interface Project {
   name: string;
   type: ProjectType;
   language: string;
-  code: string[];
-  comments: string[];
+  code: string[] | string; // Support both for now, migration later
+  comments?: string[]; // Legacy
+  notes?: Array<{ line: number; content: string }>; // New format
+  description?: string;
   createdAt: string;
   folderId: string | null;
   wpm?: number;
@@ -43,22 +45,22 @@ export interface AppConfig {
   grokKey: string;
   geminiKey: string;
   model: string;
-  
+
   // Search Configuration
   searchProvider: SearchProvider;
   searchApiKey: string;
-  
+
   // Features
   showComments: boolean;
   showKeyboard: boolean;
-  
+
   // Goals
   dailyGoalMinutes: number;
-  
+
   // Internationalization
   appLanguage: 'es' | 'en';
   keyboardLayout: 'es' | 'en';
-  
+
   // Theme
   theme: 'light' | 'dark';
 }

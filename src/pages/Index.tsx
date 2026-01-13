@@ -26,6 +26,14 @@ const Index = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
+    const initialized = storage.initializeDefaultProject();
+    if (initialized) {
+      toast({
+        title: "👋 ¡Bienvenido!",
+        description: "¡Prueba el proyecto demo para comenzar!",
+        duration: 5000,
+      });
+    }
     loadData();
   }, []);
 
@@ -33,7 +41,7 @@ const Index = () => {
     setProjects(storage.getProjects());
     setCourses(storage.getCourses());
     setFolders(storage.getFolders());
-    
+
     const config = storage.getConfig();
     setTheme(config.theme);
     document.documentElement.classList.toggle('dark', config.theme === 'dark');
@@ -51,8 +59,8 @@ const Index = () => {
     setIsGenerating(true);
     try {
       const config = storage.getConfig();
-      const apiKey = config.aiProvider === 'openai' ? config.openaiKey : 
-                     config.aiProvider === 'grok' ? config.grokKey : config.geminiKey;
+      const apiKey = config.aiProvider === 'openai' ? config.openaiKey :
+        config.aiProvider === 'grok' ? config.grokKey : config.geminiKey;
 
       // Perform web search
       const searchQuery = buildSearchQuery(data.language);
@@ -82,7 +90,7 @@ const Index = () => {
 
       storage.saveProject(project);
       loadData();
-      
+
       toast({
         title: 'Proyecto creado',
         description: 'El proyecto se ha generado correctamente',
@@ -91,7 +99,7 @@ const Index = () => {
       console.error('Error creating project:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo crear el proyecto. Verifica tu configuración de API.',
+        description: error instanceof Error ? error.message : 'No se pudo crear el proyecto',
         variant: 'destructive',
       });
     } finally {
@@ -103,8 +111,8 @@ const Index = () => {
     setIsGenerating(true);
     try {
       const config = storage.getConfig();
-      const apiKey = config.aiProvider === 'openai' ? config.openaiKey : 
-                     config.aiProvider === 'grok' ? config.grokKey : config.geminiKey;
+      const apiKey = config.aiProvider === 'openai' ? config.openaiKey :
+        config.aiProvider === 'grok' ? config.grokKey : config.geminiKey;
 
       // Perform web search once for the entire course
       const searchQuery = buildSearchQuery(data.language);
@@ -134,7 +142,7 @@ const Index = () => {
       // Generate each lesson
       for (let i = 0; i < outline.lessons.length; i++) {
         const lesson = outline.lessons[i];
-        
+
         const result = await generateCode({
           provider: config.aiProvider,
           apiKey,
@@ -162,7 +170,7 @@ const Index = () => {
 
       storage.saveCourse(course);
       loadData();
-      
+
       toast({
         title: 'Curso creado',
         description: `Se han generado ${outline.lessons.length} lecciones`,
@@ -171,7 +179,7 @@ const Index = () => {
       console.error('Error creating course:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo crear el curso. Verifica tu configuración de API.',
+        description: error instanceof Error ? error.message : 'No se pudo crear el curso',
         variant: 'destructive',
       });
     } finally {
@@ -197,7 +205,7 @@ const Index = () => {
   return (
     <>
       <ThemeBackground theme={theme} />
-      
+
       {isGenerating && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="text-center space-y-4">

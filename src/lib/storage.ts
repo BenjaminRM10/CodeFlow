@@ -1,4 +1,5 @@
 import { AppConfig, Project, Course, Folder, DailyProgress } from '@/types';
+import { DEFAULT_DEMO_PROJECT } from '@/data/defaultProject';
 
 const STORAGE_KEYS = {
   CONFIG: 'appcreator_config',
@@ -110,14 +111,23 @@ export const storage = {
   updateDailyProgress(date: string, minutesPracticed: number, projectsCompleted: number): void {
     const progress = this.getDailyProgress();
     const today = progress.find(p => p.date === date);
-    
+
     if (today) {
       today.minutesPracticed += minutesPracticed;
       today.projectsCompleted += projectsCompleted;
     } else {
       progress.push({ date, minutesPracticed, projectsCompleted });
     }
-    
+
     localStorage.setItem(STORAGE_KEYS.DAILY_PROGRESS, JSON.stringify(progress));
+  },
+
+  initializeDefaultProject(): boolean {
+    const projects = this.getProjects();
+    if (projects.length === 0) {
+      this.saveProject(DEFAULT_DEMO_PROJECT);
+      return true;
+    }
+    return false;
   },
 };

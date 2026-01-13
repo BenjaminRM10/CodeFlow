@@ -11,7 +11,13 @@ export async function performWebSearch(
   provider: SearchProvider,
   apiKey: string
 ): Promise<SearchResult> {
-  if (!apiKey) {
+  let trimmedKey = apiKey?.trim();
+
+  if (!trimmedKey && provider === 'serper') {
+    trimmedKey = import.meta.env.VITE_SERPER_API_KEY || '';
+  }
+
+  if (!trimmedKey) {
     console.warn('No search API key configured, using fallback context');
     return {
       success: false,
@@ -23,13 +29,13 @@ export async function performWebSearch(
   try {
     switch (provider) {
       case 'serper':
-        return await searchSerper(query, apiKey);
+        return await searchSerper(query, trimmedKey);
       case 'bing':
-        return await searchBing(query, apiKey);
+        return await searchBing(query, trimmedKey);
       case 'google':
-        return await searchGoogle(query, apiKey);
+        return await searchGoogle(query, trimmedKey);
       case 'serpapi':
-        return await searchSerpAPI(query, apiKey);
+        return await searchSerpAPI(query, trimmedKey);
       default:
         return {
           success: false,
@@ -63,7 +69,7 @@ async function searchSerper(query: string, apiKey: string): Promise<SearchResult
 
   const data = await response.json();
   const context = extractSearchContext(data.organic || []);
-  
+
   return {
     success: true,
     context,
@@ -86,7 +92,7 @@ async function searchBing(query: string, apiKey: string): Promise<SearchResult> 
 
   const data = await response.json();
   const context = extractSearchContext(data.webPages?.value || []);
-  
+
   return {
     success: true,
     context,
@@ -110,7 +116,7 @@ async function searchSerpAPI(query: string, apiKey: string): Promise<SearchResul
 
   const data = await response.json();
   const context = extractSearchContext(data.organic_results || []);
-  
+
   return {
     success: true,
     context,
